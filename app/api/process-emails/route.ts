@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { EXPENSE_EXTRACTION_PROMPT } from "../../../lib/geminiPrompt";
+import { generateNaturalResponse } from "../../../lib/nlg";
 
 /* =======================
    Helpers
@@ -188,10 +189,12 @@ ${emailText}
     subject,
     from,
     date,
-    order_id, // ⭐ added
+    order_id,
   },
   subscription: analysis,
+  message: generateNaturalResponse(analysis), // ⭐
 });
+
 
       }
     } catch {
