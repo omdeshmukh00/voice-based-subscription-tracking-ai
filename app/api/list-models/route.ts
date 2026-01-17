@@ -15,7 +15,8 @@ export async function GET() {
     // on the GoogleGenerativeAI client class in the same way as the Python SDK.
     // We use the REST API directly to list available models.
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { cache: 'no-store' }
     );
 
     if (!response.ok) {

@@ -1,124 +1,171 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../../lib/auth";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { EXPENSE_EXTRACTION_PROMPT } from "../../../lib/geminiPrompt";
+import { authOptions } from "../auth/[...nextauth]/route";
 
+function analyzeEmail(body: string, subject: string) {
+  const text = `${subject}\n${body}`.toLowerCase();
 
+  // 1️⃣ Strong billing indicators
+  const billingKeywords = [
+    "subscription",
+    "billing",
+    "charged",
+    "payment",
+    "invoice",
+    "renewal",
+    "auto-renew",
+    "trial",
+    "expires",
+    "upgrade",
+    "paid",
+  ];
 
-export async function GET() {
-  /* =======================
-     1. Get user session
-  ======================= */
-  const session = await getServerSession(authOptions);
+  // 2️⃣ Known subscription services
+  const services = [
+    "netflix",
+    "spotify",
+    "amazon prime",
+    "google cloud",
+    "youtube premium",
+    "coursera",
+    "notion",
+    "chatgpt",
+    "openai",
+    "github",
+    "figma",
+    "canva",
+  ];
 
-  if (!session?.accessToken) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  // 3️⃣ Advertisement / noise blockers
+  const noiseKeywords = [
+    "hiring",
+    "internship",
+    "job",
+    "ppis",
+    "win",
+    "resume",
+    "opportunity",
+    "contest",
+    "sale",
+    "offer",
+    "discount",
+    "security alert",
+    "new sign-in",
+    "invited you",
+    "invitation",
+  ];
 
-  /* =======================
-     2. Fetch inbox email IDs
-  ======================= */
-  const listRes = await fetch(
-    "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&labelIds=INBOX",
-    {
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-      },
-    }
-  );
-
-  const listData = await listRes.json();
-  const messages = listData.messages ?? [];
-
-  if (messages.length === 0) {
-    return Response.json({
-      message: "No emails found",
-      debug: listData,
-    });
-  }
-
-  /* =======================
-     3. Fetch ONE email (metadata)
-  ======================= */
-  const msgId = messages[0].id;
-
-  const detailRes = await fetch(
-    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=metadata`,
-    {
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-      },
-    }
-  );
-
-  const detail = await detailRes.json();
-  const headers = detail.payload?.headers ?? [];
-
-  const subject =
-    headers.find((h: any) => h.name === "Subject")?.value ?? null;
-  const from =
-    headers.find((h: any) => h.name === "From")?.value ?? null;
-  const date =
-    headers.find((h: any) => h.name === "Date")?.value ?? null;
-  const snippet = detail.snippet ?? "";
-
-  /* =======================
-     4. Prepare email text
-  ======================= */
-  const emailText = `
-Subject: ${subject}
-From: ${from}
-Date: ${date}
-
-Content:
-${snippet}
-`;
-
-  /* =======================
-     5. Call Gemini (CORRECT MODEL)
-  ======================= */
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-  const model = genAI.getGenerativeModel({
-    model: "models/gemini-2.5-flash",
-  });
-
-  const prompt = `
-${EXPENSE_EXTRACTION_PROMPT}
-
-Email:
-${emailText}
-`;
-
-  const result = await model.generateContent(prompt);
-  const rawOutput = result.response.text();
-
-  /* =======================
-     6. Safe JSON parsing
-  ======================= */
-  let analysis;
-  try {
-    analysis = JSON.parse(rawOutput);
-  } catch {
-    analysis = {
-      parse_error: true,
-      raw_output: rawOutput,
+  // ❌ Block obvious noise
+  if (noiseKeywords.some(k => text.includes(k))) {
+    return {
+      is_relevant: false,
+      service: null,
+      amount: null,
     };
   }
 
-  /* =======================
-     7. Final response
-  ======================= */
-  return Response.json({
-    email: {
-      subject,
-      from,
-      date,
-      snippet,
-    },
-    analysis,
-  });
+  // ✅ Must have billing intent
+  const hasBilling = billingKeywords.some(k => text.includes(k));
+
+  // ✅ Must mention known service
+  const service = services.find(s => text.includes(s)) || null;
+
+  if (!hasBilling || !service) {
+    return {
+      is_relevant: false,
+      service: null,
+      amount: null,
+    };
+  }
+
+  // 💰 Extract amount (₹ or $)
+  const amountMatch = text.match(/₹\s?\d+|\$\s?\d+/);
+
+  return {
+    is_relevant: true,
+    service,
+    amount: amountMatch ? amountMatch[0] : null,
+  };
 }
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.accessToken) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  try {
+    const query = "subject:(subscription OR invoice OR bill OR payment OR renewal) -category:promotions -category:social";
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=20`,
+      {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      }
+    );
+    
+    if (!listRes.ok) {
+      const errorText = await listRes.text();
+      console.error("Gmail List API Error (Process):", listRes.status, errorText);
+       // Throw to catch block or handle gracefully
+       throw new Error(`Gmail API returned ${listRes.status}: ${errorText}`);
+    }
+
+    const listData = await listRes.json();
+    const messages = listData.messages || [];
+
+    if (messages.length === 0) {
+      return Response.json({ count: 0, results: [] });
+    }
+
+    const results = await Promise.all(
+      messages.map(async (msg: any) => {
+        const detailRes = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata`,
+          {
+            cache: "no-store",
+            headers: { Authorization: `Bearer ${session.accessToken}` },
+          }
+        );
+
+        if (!detailRes.ok) {
+           return {
+             id: msg.id,
+             snippet: "",
+             subject: "Error fetching",
+             from: "",
+             analysis: { is_relevant: false, service: null, amount: null }
+           };
+        }
+
+        const detail = await detailRes.json();
+        const headers = detail.payload?.headers || [];
+        const subject = headers.find((h: any) => h.name === "Subject")?.value || "";
+        const from = headers.find((h: any) => h.name === "From")?.value || "";
+        const snippet = detail.snippet || "";
+
+        const analysis = analyzeEmail(snippet, subject);
+
+        return {
+          id: msg.id,
+          snippet,
+          subject,
+          from,
+          analysis,
+        };
+      })
+    );
+
+    const subscriptions = results.filter((r) => r.analysis.is_relevant);
+    console.log(`Processed ${results.length} emails. Found ${subscriptions.length} subscriptions.`);
+
+    return Response.json({
+      count: subscriptions.length,
+      results: subscriptions,
+    });
+  } catch (error) {
+    console.error("Error processing emails:", error);
+    return new Response("Internal Server Error", { status: 500 });
+  }
+}
+
