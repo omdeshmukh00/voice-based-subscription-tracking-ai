@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function POST(req: Request) {
+  const body = await req.json();
+
   return NextResponse.json({
     status: "ready",
-    message: "Gmail + Gemini API workspace prepared",
+    received: body ?? null,
   });
 }
