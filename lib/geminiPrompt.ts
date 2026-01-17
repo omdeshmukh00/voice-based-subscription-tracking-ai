@@ -1,26 +1,28 @@
 export const EXPENSE_EXTRACTION_PROMPT = `
-You are an AI system that analyzes emails.
+You are an AI that extracts subscription and billing information from emails.
+
+IMPORTANT:
+- YouTube Premium, student memberships, trials, and monthly charges ARE subscriptions
+- Google services, YouTube, Spotify, Netflix, Coursera are VALID services
 
 TASK:
-1. First decide whether the email is related to a subscription, bill, or payment.
-2. If it is NOT related, return ONLY this JSON:
+1. If the email is NOT related to billing or subscriptions, return EXACTLY:
 {
   "is_relevant": false
 }
 
-3. If it IS related, return ONLY valid JSON with the following fields:
+2. If it IS related, return ONLY valid JSON:
 {
   "is_relevant": true,
-  "service_name": string | null,
+  "service_name": string,
   "amount": number | null,
-  "currency": string | null,
+  "currency": "INR" | "USD" | null,
   "billing_cycle": "monthly" | "yearly" | "one-time" | "unknown",
-  "category": "subscription" | "utility" | "shopping" | "other"
+  "category": "subscription"
 }
 
 RULES:
-- Return ONLY JSON
-- No explanations
-- No markdown
-- Use null if information is missing
+- NO markdown
+- NO explanations
+- ONLY JSON
 `;
