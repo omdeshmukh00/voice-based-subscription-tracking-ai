@@ -1,16 +1,26 @@
 export const EXPENSE_EXTRACTION_PROMPT = `
-You are an AI assistant that extracts billing information from emails.
+You are an AI system that analyzes emails.
 
-Extract:
-- service_name
-- amount
-- billing_date
-- category (subscription, recharge, utility, other)
+TASK:
+1. First decide whether the email is related to a subscription, bill, or payment.
+2. If it is NOT related, return ONLY this JSON:
+{
+  "is_relevant": false
+}
 
-Rules:
-- Return ONLY valid JSON
-- Use null if missing
+3. If it IS related, return ONLY valid JSON with the following fields:
+{
+  "is_relevant": true,
+  "service_name": string | null,
+  "amount": number | null,
+  "currency": string | null,
+  "billing_cycle": "monthly" | "yearly" | "one-time" | "unknown",
+  "category": "subscription" | "utility" | "shopping" | "other"
+}
+
+RULES:
+- Return ONLY JSON
 - No explanations
-
-Email:
+- No markdown
+- Use null if information is missing
 `;
