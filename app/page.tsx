@@ -1,36 +1,30 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
+import { useSession, signOut, signIn } from "next-auth/react";
+import { useEffect } from "react";
 
 export default function Home() {
   const { data: session, status } = useSession();
 
-  if (status === "loading") {
-    return <p>Loading...</p>;
-  }
+  useEffect(() => {
+    console.log("SESSION OBJECT:", session);
+  }, [session]);
 
-  if (session) {
+  if (status === "loading") return <p>Loading...</p>;
+
+  if (!session) {
     return (
       <div>
-        <h1>Subscription Tracker</h1>
-        <p>Logged in as: {session.user?.name}</p>
-        <p>Email: {session.user?.email}</p>
-
-        <button onClick={() => signOut()}>
-          Sign out
-        </button>
+        <h1>Not logged in</h1>
+        <button onClick={() => signIn("google")}>Login</button>
       </div>
     );
   }
 
   return (
     <div>
-      <h1>Subscription Tracker</h1>
-      <p>You are not logged in</p>
-
-      <button onClick={() => signIn("google")}>
-        Sign in with Google
-      </button>
+      <h1>Logged in as {session.user?.email}</h1>
+      <button onClick={() => signOut()}>Logout</button>
     </div>
   );
 }
