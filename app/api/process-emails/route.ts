@@ -95,9 +95,8 @@ export async function GET() {
   }
 
   try {
-    const query = "subject:(subscription OR invoice OR bill OR payment OR renewal) -category:promotions -category:social";
     const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=20`,
+      "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20",
       {
         cache: "no-store",
         headers: { Authorization: `Bearer ${session.accessToken}` },
