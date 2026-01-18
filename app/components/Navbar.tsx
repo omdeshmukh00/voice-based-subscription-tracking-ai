@@ -13,8 +13,6 @@ export function Navbar() {
           <span>STAM</span>
         </Link>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="hidden md:inline-flex">Features</Button>
-          <Button variant="ghost" size="sm" className="hidden md:inline-flex">Pricing</Button>
           <Link href="/dashboard">
              <Button variant="pro-primary" size="sm">Launch App</Button>
           </Link>

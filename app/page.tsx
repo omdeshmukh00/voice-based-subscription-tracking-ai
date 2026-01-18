@@ -44,9 +44,6 @@ export default function Home() {
                 Connect Gmail
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="pro-secondary" size="lg" className="min-w-[200px] h-14 rounded-full">
-                View Demo
-              </Button>
             </div>
 
             {/* Feature preview / minimalist illustration representation */}

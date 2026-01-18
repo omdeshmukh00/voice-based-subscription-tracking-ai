@@ -184,18 +184,15 @@ ${emailText}
       /* 7️⃣ Keep only relevant */
       if (analysis?.is_relevant === true) {
         results.push({
-  email: {
-    id: msg.id,
-    subject,
-    from,
-    date,
-    order_id,
-  },
-  subscription: analysis,
-  message: generateNaturalResponse(analysis), // ⭐
-});
-
-
+          email: {
+            id: msg.id,
+            subject,
+            from,
+            date,
+            order_id,
+          },
+          subscription: analysis,
+        });
       }
     } catch {
       continue;

@@ -5,7 +5,7 @@ import { useSession, signIn } from "next-auth/react";
 import { Navbar } from "../components/Navbar";
 import { SubscriptionCard } from "../components/SubscriptionCard";
 import { SummaryChart } from "../components/SummaryChart";
-import { InsightPanel } from "../components/InsightPanel";
+import { ChatInterface } from "../components/ChatInterface";
 import { Card } from "../components/Card";
 import { Loader2 } from "lucide-react";
 import { Button } from "../components/Button";
@@ -23,7 +23,6 @@ interface Subscription {
 interface ProcessedResult {
   email: any;
   subscription: Subscription;
-  message: string;
 }
 
 interface ApiResponse {
@@ -98,11 +97,6 @@ export default function DashboardPage() {
     color: ['#6366f1', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6'][idx % 5]
   }));
 
-  // Generate simple insights from real messages
-  const insights = data.slice(0, 3).map(item => ({
-    type: "info" as const,
-    message: item.message
-  }));
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -154,7 +148,7 @@ export default function DashboardPage() {
                 </Card>
 
                 <div className="md:col-span-1 space-y-6">
-                    <InsightPanel insights={insights} />
+                    <ChatInterface contextData={data.map(d => d.subscription)} />
                 </div>
             </div>
 
